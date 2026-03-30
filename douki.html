@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>作品タイトル</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ヘッダー -->
+<div id="header">
+    <a href="index.html" class="back">←</a>
+    <h1>作品タイトル</h1>
+</div>
+
+<!-- 漫画表示 -->
+<div id="viewer" data-folder="img/douki" data-count="4">
+    <div id="pages"></div>
+</div>
+
+<!-- ページバー -->
+<div id="footer">
+    <input type="range" id="slider" min="1" max="5" value="1">
+    <span id="pageNum">1 / 5</span>
+</div>
+
+<script src="js/viewer.js"></script>
+</body>
+</html>
