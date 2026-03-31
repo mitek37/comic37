@@ -48,41 +48,107 @@ slider.addEventListener("input", () => {
     updatePage();
 });
 
-// スワイプ処理
-let startX = 0;
-let dragging = false;
-let moved = false;
+const overlay = document.getElementById("overlay"); // 最初のナビ
 
-const SENSITIVITY = 0.6; // ←小さいほど鈍くなる（0.3〜0.5おすすめ）
-const THRESHOLD = 60;    // ←ページ確定に必要な距離
+let overlayActive = true;
+
+// 最初は操作禁止（任意）
+viewer.style.pointerEvents = "none";
+
+overlay.addEventListener("click", () => {
+    overlay.classList.add("hide");
+
+    // フェード後に削除（軽量化）
+    setTimeout(() => {
+        overlay.style.display = "none";
+        viewer.style.pointerEvents = "auto";
+        overlayActive = false;
+    }, 300);
+});
+
+// スワイプ処理
+
+const EDGE_AREA = 80;     // 端の判定(px)
+const FLICK_SPEED = 0.5;  // フリック速度（px/ms）
+
+let startX = 0;
+let startY = 0;
+let startTime = 0;
+let dragging = false;
+let edgeTap = false;
 
 viewer.addEventListener("touchstart", e => {
-    startX = e.touches[0].clientX;
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    startTime = Date.now();
     dragging = true;
-    moved = false;
 });
+
+const DRAG_SENSITIVITY = 0.9; // ← 大きくする（0.8〜1.0おすすめ）
+const MAX_DRAG_RATIO = 0.85;  // ← 最大移動も増やす
 
 viewer.addEventListener("touchmove", e => {
     if (!dragging) return;
 
-    let diff = e.touches[0].clientX - startX;
-    diff *= SENSITIVITY;
+    let diffX = e.touches[0].clientX - startX;
+    let diffY = e.touches[0].clientY - startY;
 
-    const maxMove = viewer.clientWidth;
-    diff = Math.max(-maxMove, Math.min(maxMove, diff));
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+        e.preventDefault();
 
-    pagesDiv.style.transform =
-        `translateX(calc(${current * 100}% + ${diff}px))`;
+        let move = diffX * DRAG_SENSITIVITY;
+
+        const maxMove = viewer.clientWidth * MAX_DRAG_RATIO;
+        move = Math.max(-maxMove, Math.min(maxMove, move));
+
+        pagesDiv.style.transform =
+            `translateX(calc(${current * 100}% + ${move}px))`;
+    }
 }, { passive: false });
 
 viewer.addEventListener("touchend", e => {
+    if (!dragging) return;
+    if (overlayActive) return;
+
     dragging = false;
+    edgeTap = false;
 
-    let diff = e.changedTouches[0].clientX - startX;
+    const t = e.changedTouches[0];
+    let endX = t.clientX;
+    let diffX = endX - startX;
 
-    if (diff > THRESHOLD && current < pages.length - 1) {
+    let time = Date.now() - startTime;
+    let speed = Math.abs(diffX) / time; // px/ms
+
+    const width = viewer.clientWidth;
+
+    let next = false;
+    let prev = false;
+
+    // ■ 1 タップ（ほぼ動いてない）
+    if (Math.abs(diffX) < 10) {
+        if (startX < EDGE_AREA) {
+            next = true;
+            edgeTap = true;
+        } else if (startX > width - EDGE_AREA) {
+            prev = true;
+            edgeTap = true;
+        }
+
+    } else if (speed > FLICK_SPEED) { // ■ 2 フリック（速い）
+        if (diffX < 0) prev = true;
+        else next = true;
+
+    } else {  // ■ 3 スライド終点が端
+        if (endX < EDGE_AREA) prev = true;
+        if (endX > width - EDGE_AREA) next = true;
+    }
+
+    // ■ 実際のページ移動
+    if (next && current < pages.length - 1) {
         current++;
-    } else if (diff < -THRESHOLD && current > 0) {
+    } else if (prev && current > 0) {
         current--;
     }
 
@@ -101,6 +167,13 @@ document.addEventListener("keydown", e => {
 // タップでUI表示切替
 document.addEventListener("click", e => {
     if (e.target.id === "slider") return;
+
+    if (overlayActive) return;
+
+    if (edgeTap) {
+        edgeTap = false;
+        return;
+    }
 
     uiVisible = !uiVisible;
 
