@@ -17,8 +17,7 @@ body {
 }
 
 .item img {
-    width: 100%;
-
+    width: 50%;
 }
 
 /* ヘッダー */
@@ -142,6 +141,10 @@ h2 {
 }
 
 @media (max-width: 768px) {
+
+    .item img {
+        width: 100%;
+    }
 
     #header h1 {
         font-size: 20px;
